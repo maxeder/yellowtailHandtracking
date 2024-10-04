@@ -1,0 +1,20 @@
+video {
+    clear: both;
+    display: block;
+    transform: rotateY(180deg);
+    -webkit-transform: rotateY(180deg);
+    -moz-transform: rotateY(180deg);
+    transform: scaleX(-1);
+  }
+
+.output_canvas {
+    /* position: absolute;
+    left: 0;
+    top: 0;
+    transform: scaleX(-1);
+    width: 50vw;
+    height: auto; */
+    height: auto;
+    transform: scaleX(-1);
+}
+
