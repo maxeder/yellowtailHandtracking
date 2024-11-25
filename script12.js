@@ -2,21 +2,6 @@ const videoElement = document.getElementsByClassName('input_video')[0];
 const canvasElement = document.getElementsByClassName('output_canvas')[0];
 const canvasCtx = canvasElement.getContext('2d');
 
-let sketchRNN;
-let modelLoaded = true;
-
-// Load the SketchRNN model for a specific class, e.g., 'cat'
-function preload() {
-    sketchRNN = new ms.SketchRNN("https://storage.googleapis.com/quickdraw-models/sketchRNN/models/cat.gen.json");
-  //sketchRNN = ml5.sketchRNN('garden', modelReady);
-}
-
-function modelReady() {
-  console.log('SketchRNN Model Loaded');
-  modelLoaded = true;
-}
-
-
 let drawingActive = false;
 // let middlePoint = {
 //     x: 0,
@@ -290,7 +275,7 @@ function drawpath(path) {
     // get some properties we can use to stylize the segment:
     let length = Math.sqrt(dx * dx + dy * dy);
     let speed = Math.min(length / dt, 1.5);
-
+    console.log(speed);
     // the "phase" goes from 0 to 1 as we work through the path:
     let phase = i / path.segments.length;
     // stylize:
@@ -320,167 +305,25 @@ function drawpath(path) {
   }
 }
 
-// // draw:
-// function draw() {
-//   // update the scene:
-//   if( state.animate) {
-//     animate();
-//   }
-//   // 	clear screen
-//   ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-
-//   // 	for each path of finished paths, draw them
-//   for (let path of state.paths) {
-//     drawpath(path);
-//   }
-//   // 	if currentpath exists, draw it
-//   if (state.currentpath) {
-//     drawpath(state.currentpath);
-//   }
-//   drawLandmarks(canvasCtx, [thumbPoint, indexPoint, middlePoint], {color: '#FF0000', radius: 0.2});
-
-//   window.requestAnimationFrame(draw);
-// }
-// draw();
-
-
-
-
-
-
-
-
-// State variables for AI agent
-let aiDrawing = false;
-let aiStrokePath = null;
-let aiPen = 'down'; // 'down', 'up', or 'end'
-let aiX, aiY; // Starting point for AI drawing
-
-// Modify the 'draw' function to include the AI agent's drawing
+// draw:
 function draw() {
-    // Update the scene:
-    if (state.animate) {
-        animate();
-    }
+  // update the scene:
+  if( state.animate) {
+    animate();
+  }
+  // 	clear screen
+  ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-    // Clear screen
-    ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+  // 	for each path of finished paths, draw them
+  for (let path of state.paths) {
+    drawpath(path);
+  }
+  // 	if currentpath exists, draw it
+  if (state.currentpath) {
+    drawpath(state.currentpath);
+  }
+  drawLandmarks(canvasCtx, [thumbPoint, indexPoint, middlePoint], {color: '#FF0000', radius: 0.2});
 
-    // Draw user's paths
-    for (let path of state.paths) {
-        drawpath(path);
-    }
-
-    // If currentpath exists, draw it
-    if (state.currentpath) {
-        drawpath(state.currentpath);
-
-        // Start AI agent if model is loaded and not already drawing
-        console.log("modelLoaded: " + modelLoaded)
-        if (modelLoaded && !aiDrawing) {
-        startAIDrawing(state.currentpath);
-        }
-    }
-
-    // Draw AI agent's stroke if available
-    if (aiDrawing && aiStrokePath) {
-        drawAIStroke();
-    }
-
-    // Draw landmarks
-    drawLandmarks(canvasCtx, [thumbPoint, indexPoint, middlePoint], { color: '#FF0000', radius: 0.2 });
-
-    window.requestAnimationFrame(draw);
+  window.requestAnimationFrame(draw);
 }
 draw();
-
-
-
-// Function to start AI drawing based on user's input
-function startAIDrawing(userPath) {
-    console.log("startAIDrawing")
-    // Convert userPath to SketchRNN format
-    let strokes = userPathToStrokes(userPath);
-    // Start the AI drawing
-    sketchRNN.zeroState();
-    sketchRNN.generate(strokes, gotAIStroke);
-    aiDrawing = true;
-    // Starting point for AI drawing
-    aiX = userPath.start.x;
-    aiY = userPath.start.y;
-}
-
-// Callback when AI generates a stroke
-function gotAIStroke(err, strokePath) {
-    if (err) {
-        console.error(err);
-        aiDrawing = false;
-        return;
-    }
-    aiStrokePath = strokePath;
-    aiPen = aiStrokePath.pen;
-    // If the drawing is not finished, generate the next stroke
-    if (aiPen !== 'end') {
-        sketchRNN.generate(gotAIStroke);
-    } else {
-        aiDrawing = false;
-    }
-}
-
-// Function to draw the AI's stroke
-function drawAIStroke() {
-    console.log("drawAIStroke")
-    if (!aiStrokePath) return;
-
-    // Update position
-    let dx = aiStrokePath.dx * 0.5; // Scale down if necessary
-    let dy = aiStrokePath.dy * 0.5;
-
-    if (aiPen === 'down') {
-        ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)'; // Red color for AI drawing
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(aiX, aiY);
-        ctx.lineTo(aiX + dx, aiY + dy);
-        ctx.stroke();
-    }
-
-    // Move to the next point
-    aiX += dx;
-    aiY += dy;
-    aiPen = aiStrokePath.pen;
-    aiStrokePath = null; // Reset stroke path for next stroke
-}
-
-// Convert user's path to strokes for SketchRNN
-function userPathToStrokes(userPath) {
-    let strokes = [];
-    let x = 0;
-    let y = 0;
-
-    for (let segment of userPath.segments) {
-        let dx = segment.dx;
-        let dy = segment.dy;
-        strokes.push({
-        dx: dx,
-        dy: dy,
-        pen: 'down', // Assume the pen is always down for user input
-        });
-        x += dx;
-        y += dy;
-    }
-
-    // End the strokes
-    strokes.push({
-        dx: 0,
-        dy: 0,
-        pen: 'end',
-    });
-
-    return strokes;
-}
-
-// ... [Rest of the existing code]
-
-// Call preload function to load the SketchRNN model
-preload();
